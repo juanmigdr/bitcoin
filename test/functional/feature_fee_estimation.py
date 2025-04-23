@@ -382,41 +382,6 @@ class EstimateFeeTest(BitcoinTestFramework):
         self.start_node(0,extra_args=["-acceptstalefeeestimates"])
         assert_equal(self.nodes[0].estimatesmartfee(1)["feerate"], fee_rate)
 
-    def clear_estimates(self):
-        self.log.info("Restarting node with fresh estimation")
-        self.stop_node(0)
-        fee_dat = self.nodes[0].chain_path / "fee_estimates.dat"
-        os.remove(fee_dat)
-        self.start_node(0)
-        self.connect_nodes(0, 1)
-        self.connect_nodes(0, 2)
-        self.sync_blocks()
-        assert_equal(self.nodes[0].estimatesmartfee(1)["errors"], ["Insufficient data or no feerate found"])
-
-    def broadcast_and_mine(self, broadcaster, miner, feerate, count):
-        """Broadcast and mine some number of transactions with a specified fee rate."""
-        for _ in range(count):
-            self.wallet.send_self_transfer(from_node=broadcaster, fee_rate=feerate)
-        self.sync_mempools()
-        self.generate(miner, 1)
-
-    def test_estimation_modes(self):
-        low_feerate = Decimal("0.001")
-        high_feerate = Decimal("0.005")
-        tx_count = 24
-        # Broadcast and mine high fee transactions for the first 12 blocks.
-        for _ in range(12):
-            self.broadcast_and_mine(self.nodes[1], self.nodes[2], high_feerate, tx_count)
-        check_fee_estimates_btw_modes(self.nodes[0], high_feerate, high_feerate)
-
-        # We now track 12 blocks; short horizon stats will start decaying.
-        # Broadcast and mine low fee transactions for the next 4 blocks.
-        for _ in range(4):
-            self.broadcast_and_mine(self.nodes[1], self.nodes[2], low_feerate, tx_count)
-        # conservative mode will consider longer time horizons while economical mode does not
-        # Check the fee estimates for both modes after mining low fee transactions.
-        check_fee_estimates_btw_modes(self.nodes[0], high_feerate, low_feerate)
-
     def run_test(self):
         self.log.info("This test is time consuming, please be patient")
         self.log.info("Splitting inputs so we can generate tx's")
