@@ -3,6 +3,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <common/args.h>
 #include <common/messages.h>
 #include <core_io.h>
 #include <node/context.h>
@@ -29,6 +30,8 @@ using node::NodeContext;
 
 static RPCHelpMan estimatesmartfee()
 {
+    const bool conservative_default = gArgs.GetBoolArg("-rpcestimateconservativefees", false);
+    RPCArg::Default default_estimate_mode = conservative_default ? RPCArg::Default{"conservative"} : RPCArg::Default{"economical"};
     return RPCHelpMan{"estimatesmartfee",
         "\nEstimates the approximate fee per kilobyte needed for a transaction to begin\n"
         "confirmation within conf_target blocks if possible and return the number of blocks\n"
@@ -36,7 +39,7 @@ static RPCHelpMan estimatesmartfee()
         "in BIP 141 (witness data is discounted).\n",
         {
             {"conf_target", RPCArg::Type::NUM, RPCArg::Optional::NO, "Confirmation target in blocks (1 - 1008)"},
-            {"estimate_mode", RPCArg::Type::STR, RPCArg::Default{"economical"}, "The fee estimate mode.\n"
+            {"estimate_mode", RPCArg::Type::STR, default_estimate_mode, "The fee estimate mode.\n"
               + FeeModesDetail(std::string("default mode will be used"))},
         },
         RPCResult{
@@ -66,7 +69,7 @@ static RPCHelpMan estimatesmartfee()
             CHECK_NONFATAL(mempool.m_opts.signals)->SyncWithValidationInterfaceQueue();
             unsigned int max_target = fee_estimator.HighestTargetTracked(FeeEstimateHorizon::LONG_HALFLIFE);
             unsigned int conf_target = ParseConfirmTarget(request.params[0], max_target);
-            bool conservative = false;
+            bool conservative = conservative_default;
             if (!request.params[1].isNull()) {
                 FeeEstimateMode fee_mode;
                 if (!FeeModeFromString(request.params[1].get_str(), fee_mode)) {
